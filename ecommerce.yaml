@@ -17,17 +17,30 @@
 - name: Installing and starting MariaDB
   hosts: all 
   become: yes 
+  vars: 
+    packages:
+      - mariadb-server
+      - python3-pip
+      - libmysqlclient-dev   
   tasks:
-    - name: Installing MariaDB
-      apt:
-        name: mariadb-server
+    - name: Installing MariaDB and Pre-Requisites
+      package:
+        name: '{{ item }}'
         state: "present"
         update_cache: true 
+      loop: '{{ packages}}'
+    - name: Installing mysqlclient 
+      pip: 
+        executable: pip3 
+        name: mysqlclient
+        state: "present"
+
     - name: Starting MariaDB
       service:
         name: mariadb
         state: started
         enabled: yes  
+
     - name: Configuring firewalld for MariaDB 
       firewalld: 
         permanent: true
@@ -36,27 +49,11 @@
         state: "enabled"
         immediate: true
 
-# Le module mysql a besoin de mysqlclient qui lui meme a besoin de libmysqlclient-dev 
-# surement à regrouper avec l'installation de MariaDB via APT 
+
 - name: Configuring the Database
   hosts: all 
   become: yes 
   tasks:
-    - name: Installing pip3
-      apt: 
-        name: python3-pip
-        state: "present"
-        update_cache: true
-    - name: Installing libmysqlclient-dev
-      apt: 
-        name: libmysqlclient-dev
-        state: "present"
-        update_cache: yes
-    - name: Installing mysqlclient 
-      pip: 
-        executable: pip3 
-        name: mysqlclient
-        state: "present"
     - name: Create the database
       mysql_db:
         name: ecomdb
@@ -82,7 +79,7 @@
         target: "db-load-script.sql"
   
 
-## sur le serveur WEB 
+## On the WEB servers 
 - name: Installing the WEB server 
   hosts: all 
   become: yes
@@ -91,6 +88,8 @@
       - apache2
       - php 
       - php-mysql
+      - git 
+
   tasks: 
     - name: Configuring firewalld for the WEB Server 
       firewalld: 
@@ -107,6 +106,7 @@
         update_cache: true
       loop: 
         - '{{ packages }}'
+
     - name: Starting the WEB server
       service: 
         name: apache2
@@ -119,10 +119,6 @@
         regexp: 'index.html'
         replace: 'index.php'
 
-    - name: Installing Git 
-      apt: 
-        name: git 
-        state: "present"
     - name: Installing the code 
       git: 
         repo: "https://github.com/kodekloudhub/learning-app-ecommerce.git"
