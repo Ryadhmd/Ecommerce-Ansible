@@ -1,3 +1,4 @@
-
-server ansible_host=192.168.1.200 ansible_connection=ssh ansible_user=ryad ansible_ssh_pass=ryad 
+webserver ansible_host=192.168.152.130    ansible_connection=ssh
+# target2
+dbserver  ansible_host=192.168.152.172   ansible_connection=ssh
 

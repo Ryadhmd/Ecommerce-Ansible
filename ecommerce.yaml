@@ -15,7 +15,7 @@
           enabled: yes 
 
 - name: Installing and starting MariaDB
-  hosts: all 
+  hosts: dbserver
   become: yes 
   vars: 
     packages:
@@ -51,7 +51,7 @@
 
 
 - name: Configuring the Database
-  hosts: all 
+  hosts: dbserver 
   become: yes 
   tasks:
     - name: Create the database
@@ -64,6 +64,8 @@
         password: "ecompassword"
         priv: '*.*:ALL'
         state: present
+        #IP of the WEB server
+        host: 192.168.152.130
     - name: Copying the SQL script
       copy: 
         dest: "~/"
@@ -73,7 +75,7 @@
         chdir: "~/"
         login_user: ecomuser
         login_password: "ecompassword"
-        login_host: localhost
+        login_host: 192.168.152.172
         name: ecomdb
         state: import
         target: "db-load-script.sql"
@@ -81,7 +83,7 @@
 
 ## On the WEB servers 
 - name: Installing the WEB server 
-  hosts: all 
+  hosts: webserver 
   become: yes
   vars: 
     packages: 
@@ -130,5 +132,6 @@
       replace: 
         path: /var/www/html/index.php
         regexp: '172.20.1.101'
-        replace: 'localhost'
+        # ip of the database server
+        replace: '192.168.152.172'
       
