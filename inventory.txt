@@ -1,4 +1,4 @@
-webserver ansible_host=192.168.152.108    ansible_connection=ssh
+webserver ansible_host=192.168.1.106   ansible_connection=ssh
 # target2
-#dbserver  ansible_host=192.168.152.34  ansible_connection=ssh
+dbserver  ansible_host=192.168.1.28  ansible_connection=ssh
 

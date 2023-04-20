@@ -15,13 +15,15 @@
           enabled: yes 
 
 - name: Installing and starting MariaDB
-  hosts: all
+  hosts: dbserver
   become: yes 
   vars: 
     packages:
       - mariadb-server
       - python3-pip
       - libmysqlclient-dev   
+      
+  # mysqlclient depends on libmysqlclient-dev and Mariadb needs mysqlclient in order to work 
   tasks:
     - name: Installing MariaDB and Pre-Requisites
       package:
@@ -51,7 +53,7 @@
 
 
 - name: Configuring the Database
-  hosts: all 
+  hosts: dbserver
   become: yes 
   tasks:
     - name: Create the database
@@ -59,31 +61,46 @@
         name: ecomdb
         state: present
 
+    # IP of the webserver which is gonna connect to the DB
     - name: Create the user
       mysql_user: 
         name: ecomuser
         password: "ecompassword"
         priv: '*.*:ALL'
         state: present
+        host: 192.168.1.106
 
     - name: Copying the SQL script
       copy: 
         dest: "~/"
         src: "db-load-script.sql"
 
+    # This allow to access to MariaDB from remote 
+    - name: Adding settings to MariaDB configuration to enable remote access 
+      become: true
+      vars:
+        lines: 
+          - '[mysqld]'
+          - 'skip-networking=0'
+          - 'skip-bind-address'
+      lineinfile:
+        dest: /etc/mysql/my.cnf
+        line: '{{ item }}'
+      loop: '{{ lines }}'
+
+    # for login_unix_socket as the doc says: The path to a Unix domain socket for local connections.
+    # Use this parameter to avoid the Please explicitly state intended protocol error.
     - name: Executing the SQL script
       mysql_db:
         chdir: "~/"
-        login_user: ecomuser
-        login_password: "ecompassword"
+        login_user: root
         name: ecomdb
         state: import
         target: "db-load-script.sql"
+        login_unix_socket: "/run/mysqld/mysqld.sock"
   
-
-## On the WEB servers 
 - name: Installing the WEB server 
-  hosts: all 
+  hosts: webserver 
   become: yes
   vars: 
     packages: 
@@ -121,17 +138,24 @@
         regexp: 'index.html'
         replace: 'index.php'
 
+    # We remove files in case they are already in the folder 
+    - name: Removing files in the folder
+      file:
+        path: /var/www/html/*
+        state: absent
+        
+    # force yes allow to override in case we modified the code locally 
     - name: Installing the code 
       git: 
         repo: "https://github.com/kodekloudhub/learning-app-ecommerce.git"
         dest: "/var/www/html/"
         clone: yes 
-        force: true
+        force: yes
 
     - name: Updating the code 
       replace: 
         path: /var/www/html/index.php
         regexp: '172.20.1.101'
         # ip of the database server
-        replace: 'localhost'
+        replace: '192.168.1.28'
       
